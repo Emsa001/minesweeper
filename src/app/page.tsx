@@ -1,101 +1,147 @@
-import Image from "next/image";
+"use client";
+
+import BlockElement from "@/components/BlockElement";
+import { cols, gridSize, isValid, rows } from "@/utils/isValid";
+import { useEffect, useState } from "react";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    const [map, setMap] = useState<Block[]>([]);
+    const [gameOver, setGameOver] = useState(false);
+    const [max_mines, setMaxMines] = useState<number>(80);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    const restart = () => {
+        setGameOver(false);
+        generateMap();
+    };
+
+    const generateMap = () => {
+        let map = Array.from({ length: gridSize }).map((_, i) => {
+            return {
+                id: i,
+                mine: false,
+                flag: false,
+                open: false,
+                minesAround: 0,
+            };
+        });
+
+        map = placeBombs(map);
+
+        setMap(map);
+    };
+
+    const placeBombs = (map: Block[]) => {
+        let minesCount = 0;
+        while (minesCount < max_mines) {
+            const i = Math.floor(Math.random() * gridSize);
+            if (!map[i].mine) {
+                map[i].mine = true;
+                minesCount++;
+
+                const neighbors = [i + 1, i - 1, i + cols, i - cols, i + cols + 1, i - cols - 1, i + cols - 1, i - cols + 1];
+
+                neighbors.forEach((neighbor) => {
+                    if (isValid(neighbor, i)) {
+                        map[neighbor].minesAround++;
+                    }
+                });
+            }
+        }
+
+        return map;
+    };
+
+    useEffect(() => {
+        generateMap();
+    }, []);
+
+    const openBlock = (block: Block, cont: Boolean = true) => {
+        if (block.flag || block.open || gameOver) return;
+
+        if (block.mine) {
+            setGameOver(true);
+        }
+
+        block.open = true;
+
+        const getNeighbors = (i: number) => {
+            const neighbors = [i + 1, i - 1, i + cols, i - cols, i + cols + 1, i - cols - 1, i + cols - 1, i - cols + 1];
+            return neighbors.filter((_) => isValid(_, i));
+        };
+
+        let neighbors;
+        if (cont == false) {
+            neighbors = [block.id];
+        } else {
+            neighbors = [...getNeighbors(block.id), block.id];
+        }
+
+        neighbors.map((e) => {
+            if (map[e].minesAround === 0) {
+                if (map[e].flag || map[e].mine) return;
+
+                map[e].open = true;
+                getNeighbors(e).forEach((neighbor) => {
+                    if (!map[neighbor].open && !map[neighbor].flag) {
+                        openBlock(map[neighbor], false);
+                    }
+                });
+            }
+        });
+
+        const newMap = map.map((_) => {
+            if (_.id === block.id) return block;
+            return _;
+        });
+
+        setMap(newMap);
+    };
+
+    const toggleFlag = (block: Block, event: React.MouseEvent) => {
+        event.preventDefault();
+        if (gameOver || block.open) return;
+
+        const newMap = map.map((_) => {
+            if (_.id === block.id) {
+                _.flag = !_.flag;
+                return _;
+            }
+            return _;
+        });
+
+        setMap(newMap);
+    };
+
+    return (
+        <div onContextMenu={(event) => event.preventDefault()}>
+            {gameOver && (
+                <div className="absolute top-32 left-0 right-0 top-0 grid place-items-center">
+
+                    <div className="flex flex-col items-center justify-center gap-6 bg-red-900 bg-opacity-90 rounded-2xl p-10 z-[20]">
+                        <h1 className="text-black font-black text-6xl">Game Over!</h1>
+                        <button className="bg-blue-600 p-2 w-1/2 rounded-md" onClick={restart}>
+                            Restart
+                        </button>
+                    </div>
+                </div>
+            )}
+            <div className="flex items-center justify-center">
+                <div className="w-screen h-screen flex flex-col items-center justify-center">
+                    <div
+                        className="gap-1"
+                        style={{
+                            display: "grid",
+                            gridTemplateColumns: `repeat(${cols}, 1fr)`,
+                            gridTemplateRows: `repeat(${rows}, 1fr)`,
+                            maxWidth: "fit-content",
+                        }}
+                    >
+                        {map.map((_, i) => (
+                            <BlockElement key={i} block={_} openBlock={() => openBlock(_)} onContextMenu={(event: any) => toggleFlag(_, event)} />
+                        ))}
+                    </div>
+                </div>
+            </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+    );
 }
