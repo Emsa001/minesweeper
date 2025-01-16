@@ -1,6 +1,4 @@
-export const gridSize = 625;
-export const rows = Math.floor(Math.sqrt(gridSize));
-export const cols = Math.floor(gridSize / rows);
+import { cols, gridSize } from "./settings";
 
 export const isValid = (index: number, currentIndex: number): boolean => {
     const row = Math.floor(currentIndex / cols);

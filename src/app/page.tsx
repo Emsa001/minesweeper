@@ -1,17 +1,24 @@
 "use client";
 
 import BlockElement from "@/components/BlockElement";
-import { cols, gridSize, isValid, rows } from "@/utils/isValid";
+import GameState from "@/components/GameState";
+import { isValid } from "@/utils/isValid";
+import { cols, gridSize, maxMines, rows } from "@/utils/settings";
 import { useEffect, useState } from "react";
 
 export default function Home() {
     const [map, setMap] = useState<Block[]>([]);
-    const [gameOver, setGameOver] = useState(false);
-    const [max_mines, setMaxMines] = useState<number>(80);
+    const [gameState, setGameState] = useState<true | false | null>(null);
+    const [flags, setFlags] = useState(0);
+    const [startTime, setStartTime] = useState(Date.now());
+    const [opened, setOpened] = useState(0);
 
     const restart = () => {
-        setGameOver(false);
+        setGameState(null);
         generateMap();
+        setStartTime(Date.now());
+        setFlags(0);
+        setOpened(0);
     };
 
     const generateMap = () => {
@@ -32,7 +39,7 @@ export default function Home() {
 
     const placeBombs = (map: Block[]) => {
         let minesCount = 0;
-        while (minesCount < max_mines) {
+        while (minesCount < maxMines) {
             const i = Math.floor(Math.random() * gridSize);
             if (!map[i].mine) {
                 map[i].mine = true;
@@ -54,12 +61,18 @@ export default function Home() {
     useEffect(() => {
         generateMap();
     }, []);
+    
+    useEffect(() => {
+        if ((opened === gridSize - maxMines - flags) && flags == maxMines) {
+            setGameState(true);
+        }
+    }, [flags, opened])
 
     const openBlock = (block: Block, cont: Boolean = true) => {
-        if (block.flag || block.open || gameOver) return;
+        if (block.flag || block.open || gameState != null) return;
 
         if (block.mine) {
-            setGameOver(true);
+            setGameState(false);
         }
 
         block.open = true;
@@ -94,12 +107,13 @@ export default function Home() {
             return _;
         });
 
+        setOpened((prev) => prev + 1);
         setMap(newMap);
     };
 
-    const toggleFlag = (block: Block, event: React.MouseEvent) => {
+    const toggleFlag = async (block: Block, event: React.MouseEvent) => {
         event.preventDefault();
-        if (gameOver || block.open) return;
+        if (gameState != null || block.open) return;
 
         const newMap = map.map((_) => {
             if (_.id === block.id) {
@@ -108,23 +122,14 @@ export default function Home() {
             }
             return _;
         });
-
+        
+        setFlags((prev) => (block.flag ? prev + 1 : prev - 1));
         setMap(newMap);
     };
 
     return (
         <div onContextMenu={(event) => event.preventDefault()}>
-            {gameOver && (
-                <div className="absolute top-32 left-0 right-0 top-0 grid place-items-center">
-
-                    <div className="flex flex-col items-center justify-center gap-6 bg-red-900 bg-opacity-90 rounded-2xl p-10 z-[20]">
-                        <h1 className="text-black font-black text-6xl">Game Over!</h1>
-                        <button className="bg-blue-600 p-2 w-1/2 rounded-md" onClick={restart}>
-                            Restart
-                        </button>
-                    </div>
-                </div>
-            )}
+            <GameState gameState={gameState} restart={restart} flags={flags} opened={opened} startTime={startTime} />
             <div className="flex items-center justify-center">
                 <div className="w-screen h-screen flex flex-col items-center justify-center">
                     <div
