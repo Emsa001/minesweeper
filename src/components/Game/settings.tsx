@@ -19,7 +19,7 @@ export default function GameSettings() {
     }
 
     return (
-        <div className="w-full flex flex-col items-center mt-12">
+        <div className="w-full flex flex-col items-center mt-12 pb-6">
             <h1>Game Settings</h1>
             <div className="flex justify-between w-full px-48 gap-2 mt-6">
                 <div>
