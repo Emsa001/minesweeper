@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useGame } from "@/context/game";
 import { motion } from "framer-motion";
 
 interface BlockElementInterface {
@@ -10,49 +10,63 @@ interface BlockElementInterface {
 }
 
 export default function BlockElement({ block, openBlock, onContextMenu }: BlockElementInterface) {
-    let text;
+
+    const {cheats} = useGame();
+
+    let text = block.open && (block.minesAround === 0 || block.mine ? "" : block.minesAround);
     let textColor = "text-black";
     let fontWeight = "font-normal";
+    let background;
 
-    if (block.flag) text = "🚩";
-    if (block.open) {
-        text = `${block.minesAround}`;
-        if (block.minesAround === 0) text = "";
-    }
-
-    if (block.mine && block.open) text = "💣";
-
-    // Determine text color and weight based on minesAround
     if (block.minesAround > 0) {
         switch (block.minesAround) {
             case 1:
-                textColor = "text-blue-700";
+                textColor = "text-green-500";
                 fontWeight = "font-bold";
+                background = "cobblestone.png";
                 break;
             case 2:
-                textColor = "text-green-700";
+                textColor = "text-cyan-600";
                 fontWeight = "font-bold";
+                background = "deepslate.png";
                 break;
             case 3:
-                textColor = "text-red-600";
+                textColor = "text-purple-600";
                 fontWeight = "font-bold";
+                background = "blackstone.png";
                 break;
             default:
-                textColor = "text-purple-500";
+                textColor = "text-red-900";
                 fontWeight = "font-bold";
+                background = "nether_bricks.png";
                 break;
         }
+    }
+
+    if (block.minesAround === 0) background = "smooth_stone.png";
+    if (block.mine) background = "tnt.png";
+    
+    if(!cheats){
+        if (!block.open) background = "stone.png"
     }
 
     return (
         <div
             onClick={openBlock}
             onContextMenu={onContextMenu}
-            className={`w-[30px] h-[30px] rounded-md flex items-center justify-center cursor-pointer
-            ${block.open && (block.mine ? "bg-red-500" : "bg-green-300")}
-            bg-gray-300`}
+            className={`w-[30px] h-[30px] flex items-center justify-center cursor-pointer`}
+            style={{
+                backgroundSize: "cover",
+                backgroundImage: `url('${background}')`,
+            }}
         >
-            <motion.div className={`transition transform transition-opacity ${textColor} ${fontWeight}`}>{text}</motion.div>
+            <motion.div
+                className={`relative w-full h-full transition transform transition-opacity flex items-center justify-center ${textColor} ${fontWeight}`}
+                style={{ backgroundImage: block.flag ? `url('/redstone_torch.png')` : "", backgroundSize: "cover" }}
+            >
+                {text && <div className="absolute inset-0 bg-black opacity-20"></div>}
+                <p className="z-[10]">{text}</p>
+            </motion.div>
         </div>
     );
 }
